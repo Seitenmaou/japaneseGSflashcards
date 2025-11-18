@@ -12,11 +12,13 @@ const LONG_PRESS_DELAY = 600;
 function FlashCard({ word = '', onNext }) {
   const characters = useMemo(() => Array.from(word || ''), [word]);
   const [scriptModes, setScriptModes] = useState([]);
+  const [globalMode, setGlobalMode] = useState(0);
   const longPressTimeout = useRef(null);
   const longPressTriggered = useRef(false);
 
   useEffect(() => {
     setScriptModes(Array(characters.length).fill(0));
+    setGlobalMode(0);
   }, [characters]);
 
   useEffect(() => {
@@ -42,7 +44,9 @@ function FlashCard({ word = '', onNext }) {
   };
 
   const cycleAll = () => {
-    setScriptModes((prev) => prev.map((mode) => (mode + 1) % SCRIPT_MODES.length));
+    const nextMode = (globalMode + 1) % SCRIPT_MODES.length;
+    setGlobalMode(nextMode);
+    setScriptModes(Array(characters.length).fill(nextMode));
   };
 
   const startLongPress = () => {
