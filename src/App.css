@@ -47,6 +47,9 @@
   flex-direction: column;
   align-items: center;
   gap: 1.75rem;
+  width: min(960px, 100%);
+  margin: 0 auto;
+  text-align: center;
 }
 
 .card-actions {
@@ -54,6 +57,8 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
 }
 
 .action-card {
@@ -95,7 +100,8 @@
 }
 
 .flash-card {
-  width: min(540px, 100%);
+  width: min(780px, 100%);
+  max-width: 90vw;
   background: white;
   border-radius: 28px;
   padding: clamp(1.5rem, 5vw, 2.5rem);
@@ -103,6 +109,7 @@
   border: 1px solid rgba(15, 23, 42, 0.08);
   text-align: center;
   user-select: none;
+  margin: 0 auto;
 }
 
 .slot-row {
@@ -172,6 +179,7 @@
 
   .flash-card {
     border-radius: 20px;
+    width: 100%;
   }
 
   .slot-row {
