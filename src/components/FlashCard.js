@@ -1,55 +1,103 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import TextSlot from './TextSlot';
-import { toKatakana, toRomaji } from 'wanakana';
+import { toKatakana, toRomaji, toHiragana } from 'wanakana';
 
-function FlashCard({ word, isKatakana, showFullRomaji, onNext }) {
-  const [showRomaji, setShowRomaji] = useState([]);
+const SCRIPT_MODES = [
+  { id: 'katakana', label: 'カタ', transform: (value) => toKatakana(value || '') },
+  { id: 'hiragana', label: 'ひら', transform: (value) => toHiragana(value || '') },
+  { id: 'romaji', label: 'RO', transform: (value) => toRomaji(value || '') || value },
+];
+const LONG_PRESS_DELAY = 600;
+
+function FlashCard({ word = '', onNext }) {
+  const characters = useMemo(() => Array.from(word || ''), [word]);
+  const [scriptModes, setScriptModes] = useState([]);
+  const longPressTimeout = useRef(null);
+  const longPressTriggered = useRef(false);
 
   useEffect(() => {
-    setShowRomaji(Array(word.length).fill(false));
-  }, [word]);
+    setScriptModes(Array(characters.length).fill(0));
+  }, [characters]);
 
-  const handleSlotClick = (index, e) => {
-    e.stopPropagation();
-    setShowRomaji((prev) => {
+  useEffect(() => {
+    return () => {
+      if (longPressTimeout.current) {
+        clearTimeout(longPressTimeout.current);
+      }
+    };
+  }, []);
+
+  const cycleSlot = (index) => {
+    setScriptModes((prev) => {
+      if (!prev.length) return prev;
       const updated = [...prev];
-      updated[index] = !updated[index]; // toggle on/off
+      updated[index] = (updated[index] + 1) % SCRIPT_MODES.length;
       return updated;
     });
   };
 
-  const displayWord = isKatakana ? toKatakana(word) : word;
+  const handleSlotPress = (index) => {
+    if (longPressTriggered.current) return;
+    cycleSlot(index);
+  };
+
+  const cycleAll = () => {
+    setScriptModes((prev) => prev.map((mode) => (mode + 1) % SCRIPT_MODES.length));
+  };
+
+  const startLongPress = () => {
+    if (!characters.length) return;
+    longPressTriggered.current = false;
+    clearTimeout(longPressTimeout.current);
+    longPressTimeout.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      if (typeof onNext === 'function') {
+        onNext();
+      }
+    }, LONG_PRESS_DELAY);
+  };
+
+  const endLongPress = (event) => {
+    clearTimeout(longPressTimeout.current);
+    if (longPressTriggered.current) {
+      return;
+    }
+    const tappedSlot = event.target.closest('[data-slot="true"]');
+    if (!tappedSlot) {
+      cycleAll();
+    }
+  };
+
+  const cancelLongPress = () => {
+    clearTimeout(longPressTimeout.current);
+  };
 
   return (
     <div
-      style={{
-        border: '2px solid black',
-        padding: '20px',
-        width: '320px',
-        cursor: 'default',
-        userSelect: 'none',
-        margin: '20px auto',
-        background: '#fffdf7',
-        borderRadius: '10px',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-      }}
+      className="flash-card"
+      onPointerDown={startLongPress}
+      onPointerUp={endLongPress}
+      onPointerLeave={cancelLongPress}
+      onPointerCancel={cancelLongPress}
     >
-      <div style={{ textAlign: 'center' }}>
-        {displayWord.split('').map((char, i) => (
-          <TextSlot
-            key={i}
-            character={char}
-            hint={toRomaji(char)}
-            showHint={showRomaji[i] || showFullRomaji}
-            onClick={(e) => handleSlotClick(i, e)}
-          />
-        ))}
+      <div className="slot-row">
+        {characters.map((char, index) => {
+          const modeIndex = scriptModes[index] ?? 0;
+          const mode = SCRIPT_MODES[modeIndex];
+          const displayValue = mode.transform(char);
+
+          return (
+            <TextSlot
+              key={`${char}-${index}`}
+              value={displayValue}
+              scriptLabel={mode.label}
+              modeId={mode.id}
+              onClick={() => handleSlotPress(index)}
+            />
+          );
+        })}
       </div>
-      {showFullRomaji && (
-        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '16px', color: '#555' }}>
-          {toRomaji(word)}
-        </div>
-      )}
+      <p className="card-footnote">Tap the blank space to switch every character. Long press to skip.</p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import './App.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Menu from './components/Menu';
 import FlashCard from './components/FlashCard';
 
@@ -12,13 +12,9 @@ function App() {
   const [randomPool, setRandomPool] = useState([]);
   const [index, setIndex] = useState(0);
 
-  const [isKatakana, setIsKatakana] = useState(false);
-  const [showFullRomaji, setShowFullRomaji] = useState(false);
-
   const handleNext = () => {
-    setShowFullRomaji(false)
+    if (randomPool.length === 0) return;
     setIndex((prevIndex) => (prevIndex + 1) % randomPool.length);
-
   };
 
   const handleToggle = (item) => {
@@ -27,20 +23,15 @@ function App() {
     );
   };
 
-  const handleToggleScript = () => {
-    setIsKatakana((prev) => !prev);
-  };
-
-  const handleToggleRomaji = () => {
-    setShowFullRomaji((prev) => !prev);
-  };
-
   useEffect(() => {
     const combined = toggledCategories.flatMap((cat) => data[cat] || []);
-    const shuffled = [...combined].sort(() => Math.random() - 0.5);
+    const shuffled = combined
+      .map((value) => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
     setRandomPool(shuffled);
     setIndex(0); // reset to first card on category change
-  }, [toggledCategories]);
+  }, [toggledCategories, data]);
 
   useEffect(() => {
     fetch(googleSheetsApi)
@@ -60,45 +51,64 @@ function App() {
     setCategories(Object.keys(data));
   }, [data]);
 
+  const currentWord = useMemo(() => randomPool[index], [randomPool, index]);
+  const hasSelection = randomPool.length > 0;
+
   return (
-    <div className="App">
+    <div className="App app-shell">
       <Menu
         timeout={5000}
         categories={categories}
         toggledCategories={toggledCategories}
         onToggle={handleToggle}
       />
-      <div style={{ marginLeft: '200px', padding: '1rem' }}>
-        <h1 style={{ textAlign: 'center' }}>Japanese Flash Cards</h1>
-        {randomPool.length > 0 ? (
-          <div
-            style={{
-              padding: '40px',
-              fontFamily: 'sans-serif',
-              background: '#fafafa',
-              minHeight: '100vh',
-            }}
-          >
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <button onClick={handleToggleScript} style={{ marginRight: '10px' }}>
-                Toggle Kana
-              </button>
-              <button onClick={handleToggleRomaji} style={{ marginRight: '10px' }}>
-                {showFullRomaji ? 'Hide Romaji' : 'Show Romaji'}
-              </button>
-              <button onClick={handleNext}>Next</button>
-            <FlashCard
-              word={randomPool[index]}
-              onNext={handleNext}
-              isKatakana={isKatakana}
-              showFullRomaji={showFullRomaji}
-            />
+      <main className="workspace">
+        <header className="hero">
+          <p className="eyebrow">Study anywhere</p>
+          <h1>Japanese Flash Cards</h1>
+          <p className="hero-copy">
+            Choose a category from the menu, then tap through the characters. The experience adapts for desktop,
+            tablet, and phone so you can drill vocab wherever you are.
+          </p>
+        </header>
+
+        {hasSelection ? (
+          <section className="card-stage">
+            <FlashCard word={currentWord} onNext={handleNext} />
+            <div className="card-actions">
+              <div className="action-card">
+                <span className="action-emoji" aria-hidden="true">👉</span>
+                <div>
+                  <strong>Tap a letter</strong>
+                  <p>Cycle Katakana → Hiragana → Romaji per character.</p>
+                </div>
+              </div>
+              <div className="action-card">
+                <span className="action-emoji" aria-hidden="true">🀄</span>
+                <div>
+                  <strong>Tap the card</strong>
+                  <p>Cycle every letter at once when you tap the card background.</p>
+                </div>
+              </div>
+              <div className="action-card">
+                <span className="action-emoji" aria-hidden="true">⏩</span>
+                <div>
+                  <strong>Press &amp; hold</strong>
+                  <p>Hold for a moment anywhere on the card to jump to the next word.</p>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
         ) : (
-          <p>No items to display. Please select categories from the menu.</p>
+          <section className="empty-state">
+            <h2>Select a category to begin</h2>
+            <p>
+              Use the menu button to choose at least one category. Your flash cards will appear here and
+              adapt automatically for touch, pen, or mouse.
+            </p>
+          </section>
         )}
-      </div>
+      </main>
     </div>
   );
 }

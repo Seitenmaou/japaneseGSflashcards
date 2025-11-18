@@ -1,21 +1,22 @@
 import './menu.css';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function Menu({ timeout = 5000, categories, toggledCategories, onToggle }) {
-  const [visible, setVisible] = useState(true);
+  const initialVisible = typeof window !== 'undefined' ? window.innerWidth >= 960 : true;
+  const [visible, setVisible] = useState(initialVisible);
   const menuRef = useRef(null);
   const timeoutRef = useRef(null);
   const touchStartX = useRef(null);
 
   // Inactivity Timer
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     clearTimeout(timeoutRef.current);
     if (visible) {
       timeoutRef.current = setTimeout(() => {
         setVisible(false);
       }, timeout);
     }
-  };
+  }, [visible, timeout]);
 
   // Reset timer on interaction inside menu
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function Menu({ timeout = 5000, categories, toggledCategories, on
       menuEl.removeEventListener('touchstart', handleActivity);
       clearTimeout(timeoutRef.current);
     };
-  }, [visible]);
+  }, [resetTimer]);
 
   // Click / tap outside to close
   useEffect(() => {
@@ -82,36 +83,56 @@ export default function Menu({ timeout = 5000, categories, toggledCategories, on
     };
   }, []);
 
-  const handleEdgeClick = () => {
-    setVisible(true);
-  };
-
   return (
     <>
-      {!visible && (
-        <div className="left-edge" onClick={handleEdgeClick} />
-      )}
+      <button
+        className="menu-toggle"
+        type="button"
+        aria-label={`${visible ? 'Hide' : 'Show'} study menu`}
+        aria-pressed={visible}
+        onClick={() => setVisible((prev) => !prev)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
 
-      <div
+      {visible && <div className="menu-overlay" onClick={() => setVisible(false)} />}
+
+      <aside
         ref={menuRef}
         className={`side-menu ${visible ? 'visible' : 'hidden'}`}
       >
-        <h5>Side Menu</h5>
-        <ul>
-            {categories.map((category, index) => (
-                <li key={index} className="menu-item">
-                    <label>
-                        <input
-                        type="checkbox"
-                        checked={toggledCategories.includes(category)}
-                        onChange={() => onToggle(category)}
-                        />
-                        {category}
-                    </label>
-                </li>
-            ))}
+        <div className="menu-header">
+          <div>
+            <p className="menu-eyebrow">Study sets</p>
+            <h2>Pick categories</h2>
+          </div>
+          <button
+            className="close-button"
+            aria-label="Hide study menu"
+            onClick={() => setVisible(false)}
+          >
+            ×
+          </button>
+        </div>
+        <p className="menu-subtitle">Toggle one or more decks to build your random pool.</p>
+        <ul className="menu-list">
+          {categories.length === 0 && <li className="menu-empty">Loading categories…</li>}
+          {categories.map((category, index) => (
+            <li key={index} className="menu-item">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={toggledCategories.includes(category)}
+                  onChange={() => onToggle(category)}
+                />
+                <span>{category}</span>
+              </label>
+            </li>
+          ))}
         </ul>
-      </div>
+      </aside>
     </>
   );
 }
